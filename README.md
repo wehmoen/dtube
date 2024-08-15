@@ -9,7 +9,7 @@ This is the main javascript application you can use on d.tube. This is probably 
 
 ## Preview
 
-![DTube Homepage Preview](https://i.imgur.com/kKeS77i.png)
+![DTube Homepage Preview](https://i.imgur.com/G6knxMI.png)
 
 ## Install
 
@@ -30,6 +30,9 @@ Finally, do `meteor` in the folder to start the app in development mode.
 Meteor will automatically push any change on the code to the browser while you keep the meteor dev server running.
 
 ## Going in-depth
+### Running blockchain locally
+You can run a blockchain locally on your PC to avoid sending transactions onto the live network. Follow instructions in [dtube/avalon](https://github.com/dtube/avalon), then just change API to 'localhost:3001' in the settings page to point your UI to your development chain.
+
 ### Working with Uploads
 
 For doing anything on the upload side, it is strongly recommended to run your own [dtube/ipfs-uploader](https://github.com/dtube/ipfs-uploader). Once running, simply turn the `localhost` setting to `true` in `client/settings.js` and it will upload locally instead of our production servers.
@@ -57,10 +60,6 @@ The [dtube/minidtube](https://github.com/dtube/minidtube) repository is responsi
  - - - `client/views/topbar` the fixed menu on top of the app
  - - - `client/views/sidebar` the sidebar menu
  
-## Roadmap
-The plan is to keep on pushing key features of traditional video platforms to d.tube, and decentralizing it all over time. Our roadmap shows what is centralized / decentralized at the moment in the project and where work needs to be put.
-https://docs.google.com/presentation/d/10JjkCmQjKCo0p4wObrffcmApA9JwNpdMkpIfmEnir-U/edit?usp=sharing
-
 ## Common Issues
 
 If you are using windows, the `meteor npm` seems to be buggy at times. You can try using the normal `npm` instead if you have that installed.
@@ -68,3 +67,6 @@ If you are using windows, the `meteor npm` seems to be buggy at times. You can t
 After each meteor or package.json update, you will need to re-run `meteor npm install`
 
 For any help, feel free to join us in our [Discord Channel](https://discord.gg/dtube)
+
+## Contributing
+If you want to contribute to the project, please read [this page](https://d.tube/#!/wiki/contribute).

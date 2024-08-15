@@ -1,7 +1,3 @@
-Template.video.rendered = function() {
-  Session.set('isSearchingMobile', false)
-}
-
 Template.mobiletopbar.helpers({
   isLoggedOn: function() {
     return Session.get('activeUsername')
@@ -10,9 +6,12 @@ Template.mobiletopbar.helpers({
     return Session.get('isSearchingMobile')
   },
   isLargeEnoughForLogo: function() {
-    if (!Session.get('activeUsername') && $(window).width() > 350)
+    if ($(window).width() > 346)
       return true
-    if ($(window).width() > 393)
+    return false
+  },
+  isLargeEnoughForMiniLogo: function() {
+    if ($(window).width() > 280)
       return true
     return false
   }

@@ -1,56 +1,63 @@
 Users = new Mongo.Collection(null)
+usersObserver = new PersistentMinimongo2(Users, 'users', function() {
+  var users = Users.find().fetch()
+  for (let o = 0; o < users.length; o++) {
+    if (users[o].temporary) {
+      Users.remove({_id: users[o]._id})
+      return
+    }
 
-var firstLoad = setInterval(function() {
-  if (!Users) return
-  if (!Waka) return
-  if (!Waka.db.Users) {
-    Waka.db.addCollection('Users')
-    return
+    if (users[o].network == 'steem')
+      Template.loginsteem.success(users[o].username, true)
+    if (users[o].network == 'avalon')
+      Template.loginavalon.success(users[o].username, true)
+    if (users[o].network == 'hive')
+      Template.loginhive.success(users[o].username, true)
+    if (users[o].network == 'blurt')
+      Template.loginblurt.success(users[o].username, true)
   }
+});
 
-  Users.remove({})
-  Users.refreshLocalUsers(function(){})
-  Waka.db.Users.findOne({}, function(user) {
-    if (user)
-      Template.login.success(user.username, true)
-  })
-  clearInterval(firstLoad)
-}, 50)
-
-Users.refreshUsers = function(usernames) {
+Users.refreshUsers = function(usernames, cb) {
   if (usernames.length < 1) return;
-  steem.api.getAccounts(usernames, function(e, chainusers) {
+  avalon.getAccounts(usernames, function(e, chainusers) {
     if (!chainusers) return;
     for (var i = 0; i < chainusers.length; i++) {
-      var user = Users.findOne({username: chainusers[i].name})
-      if (chainusers[i].json_metadata && JSON.parse(chainusers[i].json_metadata))
-        user.json_metadata = JSON.parse(chainusers[i].json_metadata)
-      user.reward_sbd_balance = chainusers[i].reward_sbd_balance
-      user.reward_steem_balance = chainusers[i].reward_steem_balance
-      user.reward_vesting_balance = chainusers[i].reward_vesting_balance
-      user.reward_vesting_steem = chainusers[i].reward_vesting_steem
-      Users.update({username: user.username}, user)
-    }
-  })
-}
+      var user = Users.findOne({username: chainusers[i].name, network: 'avalon'})
+      // if (chainusers[i].json && JSON.parse(chainusers[i].json))
+      //   user.json_metadata = JSON.parse(chainusers[i].json)
+      // user.reward_sbd_balance = chainusers[i].reward_sbd_balance
+      // user.reward_steem_balance = chainusers[i].reward_steem_balance
+      // user.reward_vesting_balance = chainusers[i].reward_vesting_balance
+      // user.reward_vesting_steem = chainusers[i].reward_vesting_steem
+      user.json = chainusers[i].json
+      user.balance = chainusers[i].balance
+      user.bw = chainusers[i].bw
+      user.vt = chainusers[i].vt
+      user.approves = chainusers[i].approves
+      user.maxVt = chainusers[i].maxVt
+      user.proposalVotes = chainusers[i].proposalVotes
+      user.voteLock = chainusers[i].voteLock
+      Users.update({username: user.username, network: 'avalon'}, user)
 
-Users.refreshLocalUsers = function(cb) {
-  Waka.db.Users.find({}).fetch(function(results) {
-    var usernames = []
-    for (var i = 0; i < results.length; i++) {
-      Users.insert(results[i])
-      usernames.push(results[i].username)
+      if (cb) cb()
 
-      // fill the subscribes for each local user
-      Subs.loadFollowing(results[i].username, undefined, true, function(follower) {
-        var sub = Subs.findOne({following: Meteor.settings.public.beneficiary, follower: follower})
-        if (!sub) Subs.followUs(follower, function(follower){
-          console.log('Subs loaded & Subscribed to dtube')
-        })
-        else console.log('Subs loaded')
-      })
+      if (chainusers[i].name == Session.get('activeUsername')) {
+        // refresh vt and bw now and regularly for active user
+        updateVtBw()
+        intervalVtBw = setInterval(function(){
+          updateVtBw()
+        },2500)
+
+        function updateVtBw() {
+          if (!Session.get('activeUsername'))
+            clearInterval(intervalVtBw)
+          var user = Users.findOne({username: Session.get('activeUsername'), network: 'avalon'})
+          user.vtDisplay = avalon.votingPower(user)
+          user.bwDisplay = avalon.bandwidth(user)
+          Users.update({username: user.username, network: 'avalon'}, user)
+        }
+      }
     }
-    cb(null)
-    Users.refreshUsers(usernames)
   })
 }

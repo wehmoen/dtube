@@ -2,41 +2,6 @@ var isOriginal = false
 var isNsfw = false
 
 Template.uploadform.rendered = function () {
-  $('.ui.multiple.dropdown').dropdown({
-    allowAdditions: true,
-    keys: {
-      delimiter: 32, // 188 (the comma) by default.
-    },
-    onNoResults: function (search) { }, // trick to hide no result message
-    onChange: function () {
-      var tags = $('#tags').val().split(",").length;
-      if (tags <= 3) {
-        $('.tags.alert').addClass('dsp-non')
-        $('.ui.multiple.dropdown').dropdown('setting', 'allowAdditions', true);
-      }
-      else {
-        $('.tags.alert').removeClass('dsp-non')
-        $('.ui.multiple.dropdown').dropdown('setting', 'allowAdditions', false);
-      }
-    }
-  });
-  $('.ui.nsfw.slider').checkbox({
-    onChecked: function () {
-      let tags = $('#tags').val().split(",");
-      if (tags.length <= 3) {
-        $('.ui.multiple.dropdown').dropdown('set selected', ['nsfw']);
-      }
-      else {
-        $('.ui.multiple.dropdown').dropdown('setting', 'allowAdditions', true);
-        $('.ui.multiple.dropdown').dropdown('remove selected', tags.pop());
-        $('.ui.multiple.dropdown').dropdown('set selected', ['nsfw']);
-      }
-    },
-    onUnchecked: function () {
-      $('.ui.multiple.dropdown').dropdown('setting', 'allowAdditions', true);
-      $('.ui.multiple.dropdown').dropdown('remove selected', ['nsfw']);
-    }
-  });
   $('.menu .item').tab();
 }
 
@@ -46,241 +11,132 @@ Template.uploadform.helpers({
   }
 })
 
-Template.uploadform.parseTags = function (raw) {
-  var tags = []
-  var videoTags = []
-  var form = document.getElementsByClassName('uploadform')[0]
-  if (FlowRouter.current().route.name == 'golive')
-    tags.push('dtv')
-  else
-    tags.push(Meteor.settings.public.beneficiary)
-  for (var i = 0; i < raw.split(',').length; i++) {
-    if (tags.length < 5)
-      tags.push(raw.split(',')[i].toLowerCase())
-    if (videoTags.length < 5)
-      videoTags.push(raw.split(',')[i].toLowerCase())
-    //tags.push('dtube-'+raw.split(',')[i].toLowerCase())
-  }
-  return [tags, videoTags]
-}
-
-Template.uploadform.generateVideo = function (tags) {
+Template.uploadform.generateVideo = function () {
   var article = {
-    info: {
-      title: $('input[name=title]')[0].value,
+    videoId: $('input[name=videohash]')[0].value,
+    duration: parseFloat($('input[name=duration]')[0].value),
+    title: $('input[name=title]')[0].value,
+    description: $('textarea[name=description]')[0].value,
+    filesize: parseInt($('input[name=filesize]')[0].value),
+    ipfs: {
       snaphash: $('input[name=snaphash]')[0].value,
-      author: Users.findOne({ username: Session.get('activeUsername') }).username,
-      permlink: Template.upload.createPermlink(8),
-      duration: parseFloat($('input[name=duration]')[0].value),
-      filesize: parseInt($('input[name=filesize]')[0].value),
-      spritehash: $('input[name=spritehash]')[0].value
-    },
-    content: {
-      videohash: $('input[name=videohash]')[0].value,
-      description: $('textarea[name=description]')[0].value,
-      tags: tags
+      spritehash: $('input[name=spritehash]')[0].value,
+      videohash: $('input[name=videohash]')[0].value
     }
   }
 
-  if ($('input[name=videohash]')[0].value.length > 0)
-    article.content.videohash = $('input[name=videohash]')[0].value
   if ($('input[name=video240hash]')[0].value.length > 0)
-    article.content.video240hash = $('input[name=video240hash]')[0].value
+    article.ipfs.video240hash = $('input[name=video240hash]')[0].value
   if ($('input[name=video480hash]')[0].value.length > 0)
-    article.content.video480hash = $('input[name=video480hash]')[0].value
+    article.ipfs.video480hash = $('input[name=video480hash]')[0].value
   if ($('input[name=video720hash]')[0].value.length > 0)
-    article.content.video720hash = $('input[name=video720hash]')[0].value
+    article.ipfs.video720hash = $('input[name=video720hash]')[0].value
   if ($('input[name=video1080hash]')[0].value.length > 0)
-    article.content.video1080hash = $('input[name=video1080hash]')[0].value
+    article.ipfs.video1080hash = $('input[name=video1080hash]')[0].value
   if ($('input[name=magnet]')[0].value.length > 0)
-    article.content.magnet = $('input[name=magnet]')[0].value
+    article.magnet = $('input[name=magnet]')[0].value
 
   if (Session.get('tempSubtitles') && Session.get('tempSubtitles').length > 0)
-    article.content.subtitles = Session.get('tempSubtitles')
+    article.ipfs.subtitles = Session.get('tempSubtitles')
 
-  if (!article.info.title) {
+  if (article.ipfs.snaphash) {
+    article.thumbnailUrl = 'https://snap1.d.tube/ipfs/'+article.ipfs.snaphash
+  }
+
+  if (!article.title) {
     toastr.error(translate('UPLOAD_ERROR_TITLE_REQUIRED'), translate('ERROR_TITLE'))
     return
   }
-  if (!article.info.title.length > 256) {
+  if (!article.title.length > 256) {
     toastr.error(translate('UPLOAD_ERROR_TITLE_TOO_LONG'), translate('ERROR_TITLE'))
     return
   }
-  if (!article.info.snaphash) {
+  if (!article.ipfs.snaphash || !article.thumbnailUrl) {
     toastr.error(translate('UPLOAD_ERROR_UPLOAD_SNAP_FILE'), translate('ERROR_TITLE'))
     return
   }
-  if (!article.info.author) {
-    toastr.error(translate('UPLOAD_ERROR_LOGIN_BEFORE_UPLOADING'), translate('ERROR_TITLE'))
-    return
-  }
-  if (!article.content.videohash) {
+  if (!article.ipfs.videohash || !article.videoId) {
     toastr.error(translate('UPLOAD_ERROR_UPLOAD_VIDEO_BEFORE_SUBMITTING'), translate('ERROR_TITLE'))
     return
+  } else {
+    article.providerName = 'BTFS'
   }
   return article
 }
 
-Template.uploadform.generateLivestream = function (tags) {
-  var article = {
-    info: {
-      title: $('input[name=title]')[0].value,
-      snaphash: Session.get('streamImageHash'),
-      author: Users.findOne({ username: Session.get('activeUsername') }).username,
-      permlink: Template.upload.createPermlink(8),
-      livestream: true
-    },
-    content: {
-      description: $('textarea[name=description]')[0].value,
-      tags: tags
-    }
-  }
-
-  if (!article.info.title) {
-    toastr.error(translate('UPLOAD_ERROR_TITLE_REQUIRED'), translate('ERROR_TITLE'))
-    return
-  }
-  if (!article.info.title.length > 256) {
-    toastr.error(translate('UPLOAD_ERROR_TITLE_TOO_LONG'), translate('ERROR_TITLE'))
-    return
-  }
-  if (!article.info.snaphash) {
-    toastr.error(translate('UPLOAD_ERROR_UPLOAD_SNAP_FILE'), translate('ERROR_TITLE'))
-    return
-  }
-  if (!article.info.author) {
-    toastr.error(translate('UPLOAD_ERROR_LOGIN_BEFORE_UPLOADING'), translate('ERROR_TITLE'))
-    return
-  }
-  return article
-}
-
+Template.uploadformfulledit.events({
+  'click .editadvanced': function(event) {
+    event.preventDefault()
+    var video = Videos.findOne({	
+      author: FlowRouter.getParam("author"),
+      link: FlowRouter.getParam("permlink")	
+    })
+    Session.set('tmpVideo', video)
+    Session.set('tmpVideoEdit', true)
+    FlowRouter.go('/publish')
+    Session.set('addVideoStep', 'addvideopublish')
+  },
+})
 Template.uploadformsubmit.events({
   'submit .form': function (event) {
     event.preventDefault()
   },
-  'click .uploadsubmit': function (event) {
-    event.preventDefault()
-    var tags = Template.uploadform.parseTags($('input[name=tags]')[0].value)
-    if (FlowRouter.current().route.name == 'golive')
-      var article = Template.uploadform.generateLivestream(tags[1])
-    else
-      var article = Template.uploadform.generateVideo(tags[1])
-    if (!article) return
-
-    // publish on blockchain !!
-    $('#step3load').show()
-    
-    var author = article.info.author
-    var permlink = article.info.permlink
-    var title = article.info.title
-    if ($('textarea[name=body]')[0])
-      var body = $('textarea[name=body]')[0].value
-    else body = ''
-
-    if (!body || body.length < 1)
-      body = Template.upload.genBody(author, permlink, title, article.info.snaphash, article.content.videohash, article.content.description)
-    else
-      body = Template.upload.genBody(author, permlink, title, article.info.snaphash, article.content.videohash, body)
-
-    var jsonMetadata = {
-      video: article,
-      tags: tags[0],
-      app: Meteor.settings.public.app
-    }
-
-    var percent_steem_dollars = 10000
-    if ($('input[name=powerup]')[0] && $('input[name=powerup]')[0].checked)
-      percent_steem_dollars = 0
-
-    var operations = [
-      ['comment',
-        {
-          parent_author: '',
-          parent_permlink: tags[0][0],
-          author: author,
-          permlink: permlink,
-          title: title,
-          body: body,
-          json_metadata: JSON.stringify(jsonMetadata)
-        }
-      ],
-      ['comment_options', {
-        author: author,
-        permlink: permlink,
-        max_accepted_payout: '1000000.000 SBD',
-        percent_steem_dollars: percent_steem_dollars,
-        allow_votes: true,
-        allow_curation_rewards: true,
-        extensions: [
-          [0, {
-            beneficiaries: [{
-              account: Meteor.settings.public.beneficiary,
-              weight: Session.get('remoteSettings').dfees
-            }]
-          }]
-        ]
-      }]
-    ];
-    $('#step3load').show()
-    console.log(operations)
-    broadcast.send(
-      operations,
-      function (e, r) {
-        $('#step3load').hide()
-        if (e) {
-          console.log(e)
-          toastr.error(Meteor.blockchainError(e), translate('ERROR_TITLE'))
-        } else {
-          Session.set('uploadedVideo', { author: author, permlink: permlink })
-          FlowRouter.go('/v/' + author + "/" + permlink)
-        }
-      }
-    )
-  },
   'click .editsubmit': function (event) {
     event.preventDefault()
-    var tags = Template.uploadform.parseTags($('input[name=tags]')[0].value)
-    var article = Template.uploadform.generateVideo(tags[1])
-    if ($('input[name=permlink]')[0])
-      article.info.permlink = $('input[name=permlink]')[0].value
+    var video = Videos.findOne({	
+      author: FlowRouter.getParam("author"),
+      link: FlowRouter.getParam("permlink")	
+    })
 
-    var author = Session.get('activeUsername')
-    var permlink = article.info.permlink
-    var title = article.info.title
-    var body = $('textarea[name=body]')[0].value
+    // General metadata
+    if (!$('input[name=title]')[0].value) return toastr.error(translate('UPLOAD_ERROR_TITLE_REQUIRED'), translate('ERROR_TITLE'))
+    if ($('input[name=title]')[0].value.length > 256) return toastr.error(translate('UPLOAD_ERROR_TITLE_TOO_LONG'), translate('ERROR_TITLE'))
 
-    var jsonMetadata = {
-      video: article,
-      tags: tags[0],
-      app: Meteor.settings.public.app
+    video.json.title = $('input[name=title]')[0].value
+    video.json.desc = $('textarea[name=description]')[0].value
+    delete video.json.description
+
+    // IPFS specific metadata (old format)
+    if (video.json.providerName === 'IPFS' || video.json.providerName === 'BTFS') {
+      if (!$('input[name=videohash]')[0].value) return toastr.error(translate('EDIT_ERROR_MISSING_VIDEOHASH'), translate('ERROR_TITLE'))
+      if (!$('input[name=snaphash]')[0].value) return toastr.error(translate('EDIT_ERROR_MISSING_SNAPHASH'),translate('ERROR_TITLE'))
+
+      video.json.videoId = $('input[name=videohash]')[0].value
+      video.json.filesize = $('input[name=filesize]')[0].value
+      video.json.duration = $('input[name=duration]')[0].value
+      video.json.ipfs.videohash = $('input[name=videohash]')[0].value
+      video.json.ipfs.spritehash = $('input[name=spritehash]')[0].value
+      video.json.ipfs.snaphash = $('input[name=snaphash]')[0].value
+      if (!$('input[name=thumbnailUrlExternal]')[0].value) {
+        video.json.thumbnailUrl = $('input[name=thumbnailUrlExternal]')[0].value 
+      } else {
+        video.json.thumbnailUrl = 'https://snap1.d.tube/ipfs/' + $('input[name=snaphash]')[0].value
+      }
+
+      if ($('input[name=video240hash]')[0].value) video.json.ipfs.video240hash = $('input[name=video240hash]')[0].value
+      if ($('input[name=video480hash]')[0].value) video.json.ipfs.video480hash = $('input[name=video480hash]')[0].value
+      if ($('input[name=video720hash]')[0].value) video.json.ipfs.video720hash = $('input[name=video720hash]')[0].value
+      if ($('input[name=video1080hash]')[0].value) video.json.ipfs.video1080hash = $('input[name=video1080hash]')[0].value
     }
 
-    var operations = [
-      ['comment',
-        {
-          parent_author: '',
-          parent_permlink: tags[0][0],
-          author: author,
-          permlink: permlink,
-          title: title,
-          body: body,
-          json_metadata: JSON.stringify(jsonMetadata)
-        }
-      ]
-    ];
-    console.log(operations)
-    broadcast.send(
-      operations,
-      function (e, r) {
-        if (e) {
-          toastr.error(Meteor.blockchainError(e), translate('ERROR_TITLE'))
-          console.log(e)
-        } else {
-          $('#editvideosegment').toggle()
-          Template.video.loadState()
-        }
+    let steembody;
+    if ($('textarea[name=body]').length !== 0) steembody = $('textarea[name=body]')[0].value
+
+    $(".editsubmit").addClass('disabled')
+    $(".editsubmit > i.checkmark").addClass('dsp-non')
+    $(".editsubmit > i.loading").removeClass('dsp-non')
+
+    broadcast.multi.editComment(Session.get('currentRefs'),video.json,steembody,(err) => {
+      if (err) Meteor.blockchainError(err)
+      else {
+        $(".editsubmit").removeClass('disabled')
+        $(".editsubmit > i.loading").addClass('dsp-non')
+        $(".editsubmit > i.checkmark").removeClass('dsp-non')
+        toastr.success(translate('EDIT_VIDEO_SUCCESS'))
+        $('#editvideosegment').toggle()
+        $('#powerup').toggle()
+        Template.video.loadState()
       }
-    )
+    })
   }
 })

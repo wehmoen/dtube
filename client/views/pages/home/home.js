@@ -1,23 +1,22 @@
 var moment = require('moment')
+var sliderMaxSize = 12
 
 Template.home.helpers({
   watchAgain: function () {
-    return Videos.find({ source: 'wakaArticles' }, { limit: Session.get('remoteSettings').loadLimit }).fetch()
-  },
-  neighborhood: function () {
-    return Videos.find({ source: 'wakaPeers' }).fetch()
+    if (!Session.get('watchAgainLoaded')) return []
+    return WatchAgain.find({}, {limit: sliderMaxSize, sort: {last_viewed: -1}}).fetch()
   },
   newVideos: function () {
-    return Videos.find({ source: 'chainByCreated' }, {limit: 25}).fetch()
+    return Videos.find({ source: 'chainByCreated', "json.hide": {$ne: 1} }, {limit: sliderMaxSize}).fetch()
   },
   hotVideos: function () {
-    return Videos.find({ source: 'chainByHot' }, {limit: 25}).fetch()
+    return Videos.find({ source: 'chainByHot', "json.hide": {$ne: 1} }, {limit: sliderMaxSize}).fetch()
   },
   trendingVideos: function () {
-    return Videos.find({ source: 'chainByTrending' }, {limit: 25}).fetch()
+    return Videos.find({ source: 'chainByTrending', "json.hide": {$ne: 1} }, {limit: sliderMaxSize}).fetch()
   },
   feedVideos: function () {
-    return Videos.find({ source: 'chainByFeed-' + Session.get('activeUsername') }).fetch()
+    return Videos.find({ source: 'chainByFeed-' + Session.get('activeUsername'), "json.hide": {$ne: 1} }, {limit: sliderMaxSize}).fetch()
   }
 })
 
@@ -30,22 +29,17 @@ Template.home.events({
     WatchLater.remove(this._id)
     event.preventDefault()
   },
-  'click #remove': function () {
+  'click #remove': function (event) {
     var removeId = this._id
-    Waka.db.Articles.remove(removeId.substring(0, removeId.length - 1), function (r) {
-      Videos.remove({ _id: removeId }, function (r) {
-        Videos.refreshWaka()
-        Template.videoslider.refreshSlider()
-      })
-    })
+    WatchAgain.remove({_id: removeId.substring(0, removeId.length - 1)})
     event.preventDefault()
 
   }
 })
 
 Template.home.rendered = function () {
+  Videos.refreshBlockchain(function() {})
   Template.settingsdropdown.nightMode();
-  Session.set('isOnWatchAgain', false);
   if (/Mobi/.test(navigator.userAgent)) {
     Template.sidebar.empty()
   }

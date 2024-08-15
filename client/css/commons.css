@@ -6,12 +6,22 @@
   position: relative!important;
 }
 
+.lock-vscroll {
+  position: fixed; 
+  overflow-y:scroll;
+  width: 100%;
+}
+
 .dsp-inh {
   display: inherit!important;
 }
 
 .dsp-flx {
   display: flex!important;
+}
+
+.dsp-blk {
+  display: block!important;
 }
 
 .dsp-non {
@@ -69,8 +79,13 @@
   color:#555;
 }
 
+.crd-spa-lab.nightmode {
+  color: aliceblue;
+  background: unset!important;
+}
+
 .ui.card.card-notification{
-  min-height:50px;
+  min-height:fit-content;
   margin: 0px 0px;
   white-space: inherit;
   width:100%!important;
@@ -79,7 +94,7 @@
 }
 
 .ui.card.card-notification.nightmode{
-  min-height:50px;
+  min-height:fit-content;
   margin: 0px 0px;
   white-space: inherit;
   width:100%!important;
@@ -102,4 +117,8 @@
 
 .ui.card.card-notification.nightmode a {
   color: #fff;
+}
+
+.upper { 
+  text-transform:uppercase!important;
 }

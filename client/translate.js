@@ -3,9 +3,9 @@ var culture = 'en-us'
 var jsonTranslateDef = null
 
 window.loadDefaultLang = function(cb = function(){}){
-  var url = 'https://d.tube/DTube_files/lang/en/en-US.json'
-  if (window.location.hostname == 'localhost' && window.location.port == '3000')
-  url = url.replace('https://d.tube', 'http://localhost:3000')
+  var url = './DTube_files/lang/en/en-US.json'
+  // if (window.location.hostname == 'localhost' && window.location.port == '3000')
+  // url = url.replace('https://d.tube', 'http://localhost:3000')
   $.get(url, function(json, result) {
     if (result == 'success') {
       jsonTranslateDef = json
@@ -20,16 +20,17 @@ window.loadLangAuto = function(cb) {
   });
 }
 window.loadJsonTranslate = function(culture, cb = function(){}){
-  if (culture.substr(0,2) == 'en') {
+  if (culture.slice(0,2) == 'en') {
     Session.set('jsonTranslate', null)
+    UserSettings.set('language', null)
     cb()
     return
   }
 
   UserSettings.set('language', culture)
-  var url = 'https://d.tube/DTube_files/lang/'+Meteor.settings.public.lang[culture].path
-  if (window.location.hostname == 'localhost' && window.location.port == '3000')
-  url = url.replace('https://d.tube', 'http://localhost:3000')
+  var url = './DTube_files/lang/'+Meteor.settings.public.lang[culture].path
+  // if (window.location.hostname == 'localhost' && window.location.port == '3000')
+  // url = url.replace('https://d.tube', 'http://localhost:3000')
   $.get(url, function(json, result) {
     if (result == 'success') {
       Session.set('jsonTranslate', json)
@@ -37,10 +38,6 @@ window.loadJsonTranslate = function(culture, cb = function(){}){
     }
   })
 }
-
-loadDefaultLang()
-
-
 
 function translate(code){
   //find translation
@@ -57,7 +54,7 @@ function translate(code){
   }
 
   if(!found){
-    if (culture.substr(0,2) != 'en')
+    if (culture.slice(0,2) != 'en')
       console.log('have not found translation in ' + culture + ' :'+code);
     if (jsonTranslateDef) {
       for(var key in jsonTranslateDef){
@@ -108,7 +105,7 @@ function getCultureAuto(){
       if (key === cult) return key
 
     for(var key in Meteor.settings.public.lang)
-      if (cult.substr(0,2) === key.substr(0,2)) return key;
+      if (cult.slice(0,2) === key.slice(0,2)) return key;
 
   }
   return culture;

@@ -8,11 +8,7 @@ Template.videosnap.events({
     event.preventDefault()
   },
   'click #remove': function () {
-    var removeId = this._id
-    Waka.db.Articles.remove(removeId.substring(0, removeId.length - 1), function (r) {
-      Videos.remove({ _id: removeId }, function (r) {
-      })
-    })
+    WatchAgain.remove(this._id)
     event.preventDefault()
   }
 })
@@ -21,8 +17,10 @@ Template.videosnap.helpers({
   isInWatchLater: function () {
     return WatchLater.find({ _id: this._id }).fetch()
   },
-  isOnWatchAgain: function () {
-    return Session.get('isOnWatchAgain')
+  votesLength: function() {
+    if (!this || !this.votes)
+      return 0
+    return this.votes.length
   }
 })
 
@@ -36,4 +34,10 @@ Template.videosnap.rendered = function () {
   $(this.firstNode.nextSibling).find('#snapload').addClass('loaded');
 }
 
-
+Template.videosnap.fallback = (elem) => {
+  let newsrc = UI._globalHelpers.fallbackThumbnailUrl(elem.src)
+  if (newsrc)
+    elem.src = newsrc
+  else
+    elem.onerror = null
+}

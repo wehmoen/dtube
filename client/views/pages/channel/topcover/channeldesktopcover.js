@@ -15,9 +15,7 @@ Template.channeldesktopcover.helpers({
       return Session.get('activeUsername')
     },
     subCount: function () {
-      var subCount = SubCounts.findOne({ account: FlowRouter.getParam("author") })
-      if (!subCount || !subCount.follower_count) return 0
-      return subCount.follower_count;
+      return ChainUsers.findOne({ name: FlowRouter.getParam("author") }).followersCount || 0
     },
     randomBackgroundColor: function () {
       var rnd = Math.floor(Math.random() * (5 - 1 + 1)) + 1;
@@ -41,3 +39,19 @@ Template.channeldesktopcover.helpers({
       return bgcolor
     }
   })
+
+Template.channeldesktopcover.events({
+  "click #connectMetamask": function() {
+    metamask.connect()
+  },
+  "click #swapErc20": function() {
+    let networkId = parseInt(window.ethereum.chainId)
+    if (window.metamask.networks[networkId]) {
+      Template.sidebar.empty()
+      $('.swaperc20').show()
+      Template.settingsdropdown.nightMode()
+      metamask.loadGasPrice()
+    } else
+      toastr.error('Unsupported network selected',translate('ERROR_TITLE'))
+  }
+})

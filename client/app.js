@@ -1,153 +1,122 @@
 import './buffer';
-import { Template } from 'meteor/templating';
-import { ReactiveVar } from 'meteor/reactive-var';
-import wakajs from 'wakajs';
-// import Gun from 'gun/gun';
-// import SEA from 'gun/sea';
-// import timegraph from 'gun/lib/time';
-import steem from 'steem';
-import AskSteem from 'asksteem';
-import sc2sdk from 'sc2-sdk';
-steem.api.setOptions({ url: 'https://api.steemit.com' });
+import steem from 'steem'
+import hive from '@hiveio/hive-js'
+import blurt from '@blurtfoundation/blurtjs'
 
 console.log('Starting DTube APP')
 
 FlowRouter.wait();
 Meteor.startup(function(){
   console.log('DTube APP Started')
-  Session.set('remoteSettings', Meteor.settings.public.remote)
-  window.steem = steem
-  // window.Gun = Gun
 
+  window.hive = hive
+  window.steem = steem
+  window.blurt = blurt
+  Session.set('remoteSettings', Meteor.settings.public.remote)
+
+  // choose steem api on startup
+  if(!localStorage.getItem('steemAPI')
+  || Meteor.settings.public.remote.APINodes.indexOf(localStorage.getItem('steemAPI')) === -1)
+    steem.api.setOptions({ url: Meteor.settings.public.remote.APINodes[0], useAppbaseApi: true}); //Default
+  else
+    steem.api.setOptions({ url: localStorage.getItem('steemAPI'), useAppbaseApi: true }); //Set saved API.
+
+  // configure hive options
+  let hiveoptions = {
+    useAppbaseApi: true,
+    alternative_api_endpoints: Meteor.settings.public.remote.HiveAPINodes
+  }
+  if (!localStorage.getItem('hiveAPI')
+  || Meteor.settings.public.remote.HiveAPINodes.indexOf(localStorage.getItem('hiveAPI')) === -1)
+    hiveoptions.url = Meteor.settings.public.remote.HiveAPINodes[0]
+  else
+    hiveoptions.url = localStorage.getItem('hiveAPI')
+  hive.api.setOptions(hiveoptions)
+
+  // choose blurt api on startup
+  let blurtoptions = {
+    useAppbaseApi: true,
+    alternative_api_endpoints: Meteor.settings.public.remote.BlurtAPINodes
+  }
+  if (!localStorage.getItem('blurtAPI')
+  || Meteor.settings.public.remote.BlurtAPINodes.indexOf(localStorage.getItem('blurtAPI')) === -1)
+    blurtoptions.url = Meteor.settings.public.remote.BlurtAPINodes[0]
+  else
+    blurtoptions.url = localStorage.getItem('blurtAPI')
+  blurt.api.setOptions(blurtoptions)
+
+  Session.set('steemAPI', steem.api.options.url)
+  Session.set('hiveAPI',hiveoptions.url)
+  Session.set('blurtAPI',blurtoptions.url)
   Session.set('lastHot', null)
   Session.set('lastTrending', null)
   Session.set('lastCreated', null)
   Session.set('lastBlogs', {})
   Session.set('tagDays', 7)
-  Session.set('tagSortBy', 'net_votes')
+  Session.set('tagSortBy', null)
   Session.set('tagDuration', 999999)
+  Session.set('scot', Meteor.settings.public.scot)
 
-  // load language
-  loadDefaultLang(function() {
-    loadLangAuto(function() {
-      console.log('Loaded languages')
-      // start router
-      FlowRouter.initialize({hashbang: true}, function() {
-        console.log('Router initialized')
-      });
-      // handle manual fragment change
-      $(window).on('hashchange', function() {
-        FlowRouter.go(window.location.hash)
-      });
-    })
-  })
-
-
-  // init steem connect
-  var cbUrl
-  if (window.location.hostname == 'localhost' && window.location.port == '3000')
-    cbUrl = 'http://localhost:3000/#!/sc2login'
+  // load local storage settings (video visibility)
+  if (localStorage.getItem("nsfwSetting") && !isNaN(parseInt(localStorage.getItem("nsfwSetting"))))
+    Session.set('nsfwSetting', localStorage.getItem("nsfwSetting"))
   else
-    cbUrl = 'https://d.tube/#!/sc2login'
-  var sc2 = sc2sdk.Initialize({
-    app: 'dtube.app',
-    callbackURL: cbUrl,
-    accessToken: 'access_token'
-  });
-  window.sc2 = sc2
+    Session.set('nsfwSetting', 2)
+
+  if (localStorage.getItem("censorSetting") && !isNaN(parseInt(localStorage.getItem("censorSetting"))))
+    Session.set('censorSetting', localStorage.getItem("censorSetting"))
+  else
+    Session.set('censorSetting', 1)
+
+  // dark mode (buggy)
+  // if (!UserSettings.get('isInNightMode'))
+  //   UserSettings.set('isInNightMode', true)
 
   toastr.options = {
     "closeButton": true,
     "debug": false,
     "newestOnTop": true,
-    "progressBar": true,
-    "positionClass": "toast-bottom-right",
+    "progressBar": false,
+    "positionClass": "toast-top-right",
     "preventDuplicates": false,
     "onclick": null,
     "showDuration": "300",
     "hideDuration": "1000",
     "timeOut": "5000",
     "extendedTimeOut": "1000",
-    "showEasing": "swing",
+    "showEasing": "linear",
     "hideEasing": "linear",
-    "showMethod": "fadeIn",
-    "hideMethod": "fadeOut"
+    "showMethod": "slideDown",
+    "hideMethod": "slideUp"
   }
 
   if (Session.get('remoteSettings').warning)
     toastr.warning(Session.get('remoteSettings').warning, translate('WARNING_TITLE'))
 
-  steem.api.getDynamicGlobalProperties(function(err, result) {
-    if (result)
-    Session.set('steemGlobalProp', result)
-  })
+  firstLoad = setInterval(function() {
+    // if (!Videos) return
+    // Videos.refreshBlockchain(function() {})
+    clearInterval(firstLoad)
+  }, 50)
 
-  Market.getSteemPrice()
-  Market.getSteemDollarPrice()
+  // detect build javascript hash
+  var scripts = document.getElementsByTagName("script")
+  var sources = []
+  for (let i = 0; i < scripts.length; i++)
+    if (scripts[i].src.length > 0)
+      sources.push(scripts[i].src)
 
-  // loading remote settings -- disabled
-  // steem.api.getAccounts(['dtube'], function(err, result) {
-  //   if (!result || !result[0]) return
-  //   var jsonMeta = JSON.parse(result[0].json_metadata)
-  //   if (jsonMeta.remoteSettings) {
-  //     //Session.set('remoteSettings', jsonMeta.remoteSettings)
-  //     if (jsonMeta.remoteSettings.upldr) {
-  //       var rand = jsonMeta.remoteSettings.upldr[Math.floor(Math.random() * jsonMeta.remoteSettings.upldr.length)];
-  //       Session.set('upldr', rand)
-  //     }
-  //   }
-  // });
+  if (sources.length == 1)
+    Session.set('buildVersion', sources[0].split('/')[sources[0].split('/').length-1].slice(0, 8))
+  else Session.set('buildVersion', 'dev')
 
+  // get DTUBE price from coingecko
+  let url = "https://api.coingecko.com/api/v3/simple/price?ids=dtube-coin&vs_currencies=usd"
+  $.get(url, function( data ) {
+    Session.set('coinPrice', data["dtube-coin"]["usd"])
+  });
 
-  // JS IPFS node
-  // $.getScript('js/ipfs.js', function(){
-  //   console.log('IPFS loaded')
-  //   const repoPath = 'dtube-'+String(Math.random())
-  //
-  //   const node = new Ipfs({
-  //     repo: repoPath,
-  //     config: {
-  //       Addresses: {
-  //         Swarm: [
-  //           '/libp2p-webrtc-star/dns4/star-signal.cloud.ipfs.team/wss'
-  //         ]
-  //       },
-  //       Bootstrap: [
-  //         "/ip4/127.0.0.1/tcp/9999/ws/ipfs/QmYRokUHWByetfpdcaaVJLrJpPtYUjXX78Ce5SSWNmFfxg"
-  //       ]
-  //     },
-  //     init: true,
-  //     start: true,
-  //     EXPERIMENTAL: {
-  //       pubsub: false
-  //     }
-  //   })
-  //
-  //   // expose the node to the window, for the fun!
-  //   window.ipfs = node
-  //
-  //   node.on('ready', () => {
-  //     console.log('Your node is ready to use')
-  //   })
-  // });
-
-  //window.localIpfs = IpfsApi(Session.get('remoteSettings').uploadNodes[Session.get('remoteSettings').uploadNodes.length-1].node)
-  // setInterval(function() {
-  //   try {
-  //     localIpfs.repo.stat(function(e,r) {
-  //       if (e) {
-  //         Session.set('localIpfs', false)
-  //         return;
-  //       }
-  //       Session.set('localIpfs', r)
-  //
-  //       // using local gateway seems to make my internet very unstable and nothing works
-  //       // Session.set('ipfsGateway', Session.get('remoteSettings').displayNodes[Session.get('remoteSettings').displayNodes.length - 1])
-  //     })
-  //   } catch(e) {
-  //
-  //   }
-  //
-  // }, 10000)
-
+  // ethereum metamask
+  if (window.ethereum)
+    Session.set('hasMetamask', true)
 })

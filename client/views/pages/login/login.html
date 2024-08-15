@@ -1,80 +1,98 @@
 <template name='login'>
-  <div class="ui grid" style="max-width:600px;margin:auto;margin-top:10px;">
-    <form class="ui large form wid-ful ">
-      <div class="ui segments">
-        <div class="ui segment" style="padding: 20px;">
-          {{#if usingKeyChain}}
-          <div class="field">
-            <div class="ui left icon input">
-              <i class="user icon"></i>
-              <input id="keychain_username" type="text" name="username" placeholder="{{ translate 'LOGIN_PLACEHOLDER_STEEM_USERNAME'}}">
-            </div>
-          </div>
-          <div id="loginkeychain" class="ui fluid labeled small button" tabindex="0">
-            <button type="submit" name="button" class="ui fluid blue right labeled dtube icon submit button">
-              <i class="sign in icon blue" style="background:white;opacity:1;"></i>
-              <div  style="display:inline-block;padding: 0.8em 1em;">{{ translate 'LOGIN_KEYCHAIN_LOGIN'}}</div>
-            </button>
-          </div>
-          <div class="ui horizontal divider noborder">
-            <label class="text">Or</label>
-          </div>
-          <div id="loginforceprivatekey" class="ui fluid labeled small button" tabindex="0">
-            <button type="submit" name="button" class="ui fluid red right labeled dtube icon submit button">
-              <i class="sign in icon red" style="background:white;opacity:1;"></i>
-              <div  style="display:inline-block;padding: 0.8em 1em;">{{ translate 'LOGIN_FORCE_PRIVATEKEY'}}</div>
-            </button>
-          </div>
-          {{else}}
-          <div class="field">
-            <div class="ui left icon input">
-              <i class="user icon"></i>
-              <input id="username" type="text" name="username" placeholder="{{ translate 'LOGIN_PLACEHOLDER_STEEM_USERNAME'}}">
-            </div>
-          </div>
-          <div class="field">
-            <div class="ui left icon input">
-              <i class="lock icon"></i>
-              <input type="password" name="privatekey" placeholder="{{ translate 'LOGIN_PLACEHOLDER_PRIVATE_POSTING_KEY'}}">
-            </div>
-          </div>
-          <div class="field">
-            <div class="ui slider checkbox">
-              <input type="checkbox" name="rememberme">
-              <label class="text">{{ translate 'LOGIN_REMEMBER_ME'}}</label>
-            </div>
-          </div>
-          <div id="loginbutton" class="ui fluid labeled small button" tabindex="0">
-            <button type="submit" name="button" class="ui fluid red right labeled dtube icon submit button">
-              <i class="sign in icon red" style="background:white;opacity:1;"></i>
-              <div  style="display:inline-block;padding: 0.8em 1em;">{{ translate 'LOGIN_BUTTON_LOGIN'}}</div>
-            </button>
-          </div>
-          {{/if}}
+  <div class="ui equal width grid" style="max-width:600px;margin:auto;margin-top:10px;">
+    {{#if isSelectingNetwork}}
+    <div class='row' style='margin: 15px;'>
+      <h1>Login</h1>
+      <p>
+        DTube supports authentication with multiple networks at the same time.
+        Please select a network:
+      </p>
+    </div>
 
-          <div class="ui horizontal divider noborder">
-            <label class="text">Or</label>
-          </div>
-          <div id="loginbuttonsc2" class="ui fluid labeled small button" tabindex="0">
-            <button type="submit" name="button" class="ui fluid blue small right labeled dtube icon submit button">
-              <i class="sign in icon blue" style="background:white;opacity:1;"></i>
-              <div  style="display:inline-block;padding: 0.8em 1em;">{{ translate 'LOGIN_BUTTON_STEEMCONNECT'}}</div>
-            </button>
-          </div> 
-          <div class="ui message" style="margin-top:20px;">
-              {{ translate 'LOGIN_LINK_NO_ACCOUNT'}}
-              <a href="https://steemit.com/pick_account" target="_blank"> 
-                {{ translate 'LOGIN_LINK_SIGN_UP_ON'}} steemit.com</a>
-              <p></p>
-              {{ translate 'LOGIN_DIFFICULTY_FOR_LOGIN'}}
-              <a href="https://about.d.tube/#faq1" target="_blank">
-                {{ translate 'LOGIN_SEE_FAQ'}}</a>
-          </div> 
-          <div class="ui message">
-            <img height="100%" width="100%" src="https://cloudflare-ipfs.com/ipfs/QmZArG3aDvRBCSskaJoWyaQqQZq8Xt3MgDec1pz9iWdX2a">
-          </div>
-        </div>
-      </div>
-    </form>
+    {{#if noAvalonLogin}}
+    <div class="column loginOption" data-network="Avalon">
+      {{#if isNightMode}}
+      <img src="./DTube_files/images/logos/dtube_white.png">
+      {{else}}
+      <img src="./DTube_files/images/logos/dtube.png">
+      {{/if}}
+      <span>DTube</span>
+    </div>
+    {{else}}
+    <div class="column loginOptionDisabled" data-network="Avalon">
+      {{#if isNightMode}}
+      <img src="./DTube_files/images/logos/dtube_white.png">
+      {{else}}
+      <img src="./DTube_files/images/logos/dtube.png">
+      {{/if}}
+      <span>{{translate 'LOGIN_LOGGED_IN'}} <strong>{{activeUsername}}</strong></span>
+      <br /><br />
+      <button class="ui red button logOut" data-network='dtc'>Log-out</button>
+    </div>
+    {{/if}}
+    {{#each randomOrder}}
+    {{#if equals this 'steem'}}
+    {{#if noSteemLogin}}
+    <div class="column loginOption" data-network="Steem">
+      <img src="./DTube_files/images/logos/steem.png">
+      <span>Steem</span>
+    </div>
+    {{else}}
+    <div class="column loginOptionDisabled" data-network="Steem">
+      <img src="./DTube_files/images/logos/steem.png">
+      <span>{{translate 'LOGIN_LOGGED_IN'}} <strong>{{activeUsernameSteem}}</strong></span>
+      <br /><br />
+      <button class="ui red button logOut" data-network='{{this}}'>Log-out</button>
+    </div>
+    {{/if}}
+    {{/if}}
+    {{#if equals this 'hive'}}
+    {{#if noHiveLogin}}
+    <div class="column loginOption" data-network="Hive">
+      <img src="./DTube_files/images/logos/hive.png">
+      <span>Hive</span>
+    </div>
+    {{else}}
+    <div class="column loginOptionDisabled" data-network="Hive">
+      <img src="./DTube_files/images/logos/hive.png">
+      <span>{{translate 'LOGIN_LOGGED_IN'}} <strong>{{activeUsernameHive}}</strong></span>
+      <br /><br />
+      <button class="ui red button logOut" data-network='{{this}}'>Log-out</button>
+    </div>
+    {{/if}}
+    {{/if}}
+    {{#if equals this 'blurt'}}
+    {{#if noBlurtLogin}}
+    <div class="column loginOption" data-network="Blurt">
+      <img src="./DTube_files/images/logos/blurt.png">
+      <span>Blurt</span>
+    </div>
+    {{else}}
+    <div class="column loginOptionDisabled" data-network="Blurt">
+      <img src="./DTube_files/images/logos/blurt.png">
+      <span>{{translate 'LOGIN_LOGGED_IN'}} <strong>{{activeUsernameBlurt}}</strong></span>
+      <br /><br />
+      <button class="ui red button logOut" data-network='{{this}}'>Log-out</button>
+    </div>
+    {{/if}}
+    {{/if}}
+    {{/each}}
+    {{/if}}
+
+    {{#if isAvalonAuth}}
+    {{>loginavalon}}
+    {{/if}}
+
+    {{#if isHiveAuth}}
+    {{>loginhive}}
+    {{/if}}
+
+    {{#if isBlurtAuth}}
+    {{>loginblurt}}
+    {{/if}}
+
+    {{#if isSteemAuth}}
+    {{>loginsteem}}
+    {{/if}}
   </div>
 </template>
